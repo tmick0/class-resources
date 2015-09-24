@@ -1,0 +1,5 @@
+The purpose of binom_gmp is to demonstrate basic usage of the GNU Multiple
+Precision library. It demonstrates the calculation of the probability 
+P(X >= k) where X ~ B(n, p).
+
+The binom_gsl program is included for comparison. 
