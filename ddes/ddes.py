@@ -1,3 +1,14 @@
+"""
+Demonstration of the meet-in-the-middle attack on Double DES.
+
+Explanation and some background information available at:
+http://lo.calho.st/security/demonstrating-the-double-des-meet-in-the-middle-attack/
+
+Travis Mick
+New Mexico State University
+CS 478 - Spring 2016
+"""
+
 from Crypto.Cipher import DES
 import itertools
 
