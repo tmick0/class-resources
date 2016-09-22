@@ -12,7 +12,7 @@
     Computes one block of an extended key.
     
     Params:
-    - work: buffer to use as a working area, must be 3 times the PRF output length
+    - work: buffer to use as a working area, must be 2 times the PRF output length
     - prf: a pointer to the PRF structure to use for key derivation
     - key: the password or secret to use for key derivation
     - klen: the length of the key
@@ -29,23 +29,20 @@
 */
 void pbkdf2_block(char *work, const prf_param_t *prf, const char *key, uint32_t klen, const char *salt, uint32_t slen, uint32_t c, uint32_t i, char *result, uint32_t trunc){
     char *a = work;
-    char *b = work + 1 * prf->len;
-    char *x = work + 2 * prf->len;
+    char *x = work + prf->len;
     uint32_t tmp = htonl(i + 1);
     int j;
-        
+      
     bzero(a, prf->len);
     memcpy(a, salt, slen);
     memcpy(a + slen, &tmp, sizeof(uint32_t));
     
-    prf->prf(key, klen, a, slen + sizeof(uint32_t), b);
-    memcpy(x, b, prf->len);
-    memcpy(a, b, prf->len);
+    prf->prf(key, klen, a, slen + sizeof(uint32_t), a);
+    memcpy(x, a, prf->len);
     
     for(j = 1; j < c; j++){
-        prf->prf(key, klen, a, prf->len, b);
-        block_xor(b, x, x, prf->len);
-        memcpy(a, b, prf->len);
+        prf->prf(key, klen, a, prf->len, a);
+        block_xor(a, x, x, prf->len);
     }
     
     memcpy(result, x, (prf->len <= trunc) ? prf->len : trunc);
@@ -70,7 +67,7 @@ void pbkdf2_block(char *work, const prf_param_t *prf, const char *key, uint32_t 
 void pbkdf2(const prf_param_t *prf, const char *key, uint32_t klen, const char *salt, uint32_t slen, uint32_t c, uint32_t dkLen, char *result){
     uint32_t i;
     uint32_t blocks = ceil((float) dkLen / prf->len);
-    char *buffer = malloc(prf->len * 3);
+    char *buffer = malloc(prf->len * 2);
     
     bzero(result, dkLen);
     
