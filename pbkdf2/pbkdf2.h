@@ -1,6 +1,9 @@
 #ifndef pbkdf2_h
 #define pbkdf2_h
 
-void pbkdf2_hmac_sha256(const char *key, unsigned klen, const char *salt, unsigned slen, unsigned c, unsigned dkLen, char *result);
+#include <stdint.h>
+#include "hmac.h"
+
+void pbkdf2(const prf_param_t *prf, const char *key, uint32_t klen, const char *salt, uint32_t slen, uint32_t c, uint32_t dkLen, char *result);
 
 #endif

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "pbkdf2.h"
+#include "hmac.h"
 #include "io.h"
  
 int main(int argc, char **argv){
@@ -11,7 +12,7 @@ int main(int argc, char **argv){
     
     char *res = malloc(dklen);
     
-    pbkdf2_hmac_sha256(argv[1], strlen(argv[1]), argv[2], strlen(argv[2]), c, dklen, res);
+    pbkdf2(&prf_hmac_sha256, argv[1], strlen(argv[1]), argv[2], strlen(argv[2]), c, dklen, res);
     hexprint(res, dklen);
     
     free(res);

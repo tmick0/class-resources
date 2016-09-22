@@ -1,69 +1,101 @@
 #include "pbkdf2.h"
 #include "hmac.h"
-#include "io.h"
 
 #include <math.h>
 #include <string.h>
-#include <stdio.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 
-void block_xor(const char *a, const char *b, char *c, unsigned len){
+/** block_xor:
+    Performs xor between two character arrays and stores the result in a third
+    array. It is safe for c to be equal to either a or b.
+    
+    Params:
+    - a: input array
+    - b: input array
+    - c: output array
+    - len: length of each
+    
+    Return:
+    - Nothing
+    
+*/
+void block_xor(const char *a, const char *b, char *c, uint32_t len){
     int i;
     for(i = 0; i < len; i++){
         c[i] = a[i] ^ b[i];
     }
 }
 
-void pbkdf2_hmac_sha256_block(const char *key, unsigned klen, const char *salt, unsigned slen, unsigned c, unsigned i, char *result, unsigned trunc){
-    char a[HMAC_SHA256_LEN], b[HMAC_SHA256_LEN], x[HMAC_SHA256_LEN];
-    int j;
+/** pbkdf2_block:
+    Computes one block of an extended key.
+    
+    Params:
+    - work: buffer to use as a working area, must be 3 times the PRF output length
+    - prf: a pointer to the PRF structure to use for key derivation
+    - key: the password or secret to use for key derivation
+    - klen: the length of the key
+    - salt: the salt to use for key derivation
+    - slen: the length of the salt
+    - c: the number of iterations to perform
+    - i: the block number (starting at 0)
+    - result: character array where the derived block will be stored
+    - trunc: the maximum output length
+    
+    Return:
+    - Nothing
+    
+*/
+void pbkdf2_block(char *work, const prf_param_t *prf, const char *key, uint32_t klen, const char *salt, uint32_t slen, uint32_t c, uint32_t i, char *result, uint32_t trunc){
+    char *a = work;
+    char *b = work + 1 * prf->len;
+    char *x = work + 2 * prf->len;
     uint32_t tmp = htonl(i + 1);
+    int j;
         
-    bzero(a, HMAC_SHA256_LEN);
+    bzero(a, prf->len);
     memcpy(a, salt, slen);
     memcpy(a + slen, &tmp, sizeof(uint32_t));
     
-    hmac_sha256(key, klen, a, slen + sizeof(uint32_t), b);
-    memcpy(x, b, HMAC_SHA256_LEN);
-    memcpy(a, b, HMAC_SHA256_LEN);
-    
-    printf("    u1 = ");
-    hexprint(b, HMAC_SHA256_LEN);
+    prf->prf(key, klen, a, slen + sizeof(uint32_t), b);
+    memcpy(x, b, prf->len);
+    memcpy(a, b, prf->len);
     
     for(j = 1; j < c; j++){
-        hmac_sha256(key, klen, a, HMAC_SHA256_LEN, b);
-        printf("    u%u = ", j+1);
-        hexprint(b, HMAC_SHA256_LEN);
-        block_xor(b, x, x, HMAC_SHA256_LEN);
-        memcpy(a, b, HMAC_SHA256_LEN);
+        prf->prf(key, klen, a, prf->len, b);
+        block_xor(b, x, x, prf->len);
+        memcpy(a, b, prf->len);
     }
     
-    memcpy(result, x, (HMAC_SHA256_LEN <= trunc) ? HMAC_SHA256_LEN : trunc);
-    
+    memcpy(result, x, (prf->len <= trunc) ? prf->len : trunc);
 }
 
-void pbkdf2_hmac_sha256(const char *key, unsigned klen, const char *salt, unsigned slen, unsigned c, unsigned dkLen, char *result){
-    unsigned i;
-    unsigned blocks = ceil((float) dkLen / HMAC_SHA256_LEN);
+/** pbkdf2:
+    Computes an extended key using a chosen PRF.
     
-    printf("K = ");
-    hexprint(key, klen);
+    Params:
+    - prf: a pointer to the PRF structure to use for key derivation
+    - key: the password or secret to use for key derivation
+    - klen: the length of the key
+    - salt: the salt to use for key derivation
+    - slen: the length of the salt
+    - c: the number of iterations to perform
+    - result: character array where the derived block will be stored
     
-    printf("S = ");
-    hexprint(salt, slen);
+    Return:
+    - Nothing
     
-    printf("c = %u\n", c);
-    printf("dkLen = %u\n", dkLen);
+*/
+void pbkdf2(const prf_param_t *prf, const char *key, uint32_t klen, const char *salt, uint32_t slen, uint32_t c, uint32_t dkLen, char *result){
+    uint32_t i;
+    uint32_t blocks = ceil((float) dkLen / prf->len);
+    char *buffer = malloc(prf->len * 3);
     
     bzero(result, dkLen);
     
     for(i = 0; i < blocks; i++){
-    
-        printf("  i = %u\n", i);
-        pbkdf2_hmac_sha256_block(key, klen, salt, slen, c, i, result + i * HMAC_SHA256_LEN, dkLen - i * HMAC_SHA256_LEN);
-        
-        printf("  block = ");
-        hexprint(result, HMAC_SHA256_LEN);
-        
+        pbkdf2_block(buffer, prf,  key, klen, salt, slen, c, i, result + i * prf->len, dkLen - i * prf->len);
     }
+    
+    free(buffer);
 }
