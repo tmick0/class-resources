@@ -1,5 +1,5 @@
 CC=gcc
-CCFLAGS=-Wall -Wpedantic -Werror
+CCFLAGS=-Wall -Wpedantic -Werror -O5 -mtune=native -std=c11
 LDFLAGS=-lcrypto -lm
 
 SOURCES=$(wildcard *.c)
